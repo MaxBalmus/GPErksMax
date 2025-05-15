@@ -39,9 +39,14 @@ def find_start_seq(index, feat_dim):  # utility function for "whereq_whernot"
 
 
 def delta(X):  # utility function for "part_and_select"
-    delta_u_l = [(X[:, i].max() - X[:, i].min()) for i in range(X.shape[1])]
-    pj = np.argmax(delta_u_l)
-    return pj, delta_u_l[pj]
+    # compute per‐column min and max in one go
+    col_min = X.min(axis=0)
+    col_max = X.max(axis=0)
+    ranges = col_max - col_min
+
+    # pick the index and its range
+    pj = int(np.argmax(ranges))
+    return pj, float(ranges[pj])
 
 
 def part_and_select(P, N):
@@ -49,6 +54,8 @@ def part_and_select(P, N):
     p1, s1 = delta(C1)
     archive = [(s1, p1, C1)]
     i = 1
+    print('Part and select')
+    print('Step 1')
     while i < N:
         if all([not x[0] for x in archive]):
             break
@@ -65,6 +72,7 @@ def part_and_select(P, N):
         i += 1
     parts = [C for _, _, C in archive]
     selected = []
+    print('Step 2')
     for C in parts:
         c = np.mean(C, axis=0)
         idx = np.argmin(np.linalg.norm(C - c, axis=1))
