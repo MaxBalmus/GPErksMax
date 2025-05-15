@@ -44,24 +44,32 @@ class Wave:
         n_samples = X.shape[0]
         output_dim = len(self.emulator)
 
+        # Collect all means and variances in one go
         M = np.zeros((n_samples, output_dim), dtype=float)
         V = np.zeros((n_samples, output_dim), dtype=float)
         for j, emul in enumerate(self.emulator):
-            mean, std = emul.predict(X)
-            var = np.power(std, 2)
+            mean, std = emul.predict(X)  # Assuming std is std. deviation
             M[:, j] = mean
-            V[:, j] = var
+            V[:, j] = np.square(std)
 
-        I = np.zeros((n_samples,), dtype=float)
-        PV = np.zeros((n_samples,), dtype=float)
-        for i in range(n_samples):
-            In = np.sqrt((np.power(M[i, :] - self.mean, 2)) / (V[i, :] + self.var))
-            PVn = V[i, :] / self.var
+        # Add small epsilon to prevent divide-by-zero
+        eps = 1e-10
+        denom = V + self.var + eps
+        num = np.square(M - self.mean)
 
-            I[i] = np.sort(In)[-self.maxno]
-            PV[i] = np.sort(PVn)[-self.maxno]
+        In = np.sqrt(num / denom)  # shape: (n_samples, output_dim)
+        PVn = V / (self.var + eps)
+
+        # Sort across output dimensions
+        In_sorted = np.sort(In, axis=1)
+        PVn_sorted = np.sort(PVn, axis=1)
+
+        # Extract the maxno-th largest value (i.e., from the end)
+        I = In_sorted[:, -self.maxno]
+        PV = PVn_sorted[:, -self.maxno]
 
         return I, PV
+
 
     def find_regions(self, X):
         n_samples = X.shape[0]
