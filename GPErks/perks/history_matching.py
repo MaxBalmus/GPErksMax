@@ -126,7 +126,6 @@ class Wave:
             )
         else:
             X = part_and_select(self.NIMP, n_points)
-            raise Exception(X.shape)
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
 

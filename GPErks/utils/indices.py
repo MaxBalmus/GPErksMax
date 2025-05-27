@@ -66,7 +66,6 @@ def part_and_select(P, N):
         Cj2 = Cj[Cj[:,pj] >  cpj]
         pj1, sj1 = delta(Cj1)
         pj2, sj2 = delta(Cj2)
-        print(Cj1.shape, Cj2.shape)
         archive.remove((sj, pj, Cj))
         archive.append((sj1, pj1, Cj1))
         archive.append((sj2, pj2, Cj2))
