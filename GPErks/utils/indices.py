@@ -56,28 +56,28 @@ def part_and_select(P, N):
     i = 1
     print('Part and select')
     print('Step 1')
+    print(C1.shape, N)
     while i < N:
         if all([not x[0] for x in archive]):
             break
         sj, pj, Cj = max(archive[:i], key=lambda x: x[0])
-        upj = np.max(Cj[:, pj])
-        lpj = np.min(Cj[:, pj])
-        Cj1 = np.array([x for x in Cj if x[pj] <= (upj + lpj) / 2])
-        Cj2 = np.array([x for x in Cj if x[pj] > (upj + lpj) / 2])
+        cpj = (np.max(Cj[:, pj]) + np.min(Cj[:, pj])) / 2
+        Cj1 = Cj[Cj[:,pj] <= cpj]
+        Cj2 = Cj[Cj[:,pj] >  cpj]
         pj1, sj1 = delta(Cj1)
         pj2, sj2 = delta(Cj2)
+        print(Cj1.shape, Cj2.shape)
         archive.remove((sj, pj, Cj))
         archive.append((sj1, pj1, Cj1))
         archive.append((sj2, pj2, Cj2))
         i += 1
-    parts = [C for _, _, C in archive]
     selected = []
     print('Step 2')
-    for C in parts:
+    for _, _, C in archive:
         c = np.mean(C, axis=0)
         idx = np.argmin(np.linalg.norm(C - c, axis=1))
         selected.append(C[idx])
-    return parts, np.stack(selected)
+    return np.stack(selected)
 
 
 def matrix_subtraction(X, XS):

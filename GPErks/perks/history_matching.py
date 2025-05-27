@@ -125,7 +125,8 @@ class Wave:
                 + "less than W.NIMP.shape[0] - 1."
             )
         else:
-            _, X = part_and_select(self.NIMP, n_points)
+            X = part_and_select(self.NIMP, n_points)
+            raise Exception(X.shape)
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
 
@@ -197,7 +198,7 @@ class Wave:
         log.info("\nDone.")
 
         nimp = len(self.nimp_idx)
-        _, NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
+        NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
         I, PV = self.compute_impl(NIMP_aug)
         self.NIMP = np.vstack((X[:nimp], NIMP_aug))
         self.I = np.concatenate((self.I, I))
