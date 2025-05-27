@@ -56,7 +56,6 @@ def part_and_select(P, N):
     i = 1
     print('Part and select')
     print('Step 1')
-    print(C1.shape, N)
     while i < N:
         if all([not x[0] for x in archive]):
             break
