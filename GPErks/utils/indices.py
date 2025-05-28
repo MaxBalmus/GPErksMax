@@ -50,7 +50,10 @@ def delta(X):  # utility function for "part_and_select"
 
 
 def part_and_select(P, N):
-    C1 = P
+    C1 = P.copy()
+    min_ = C1.min(axis=0)
+    max_ = C1.max(axis=0)
+    C1 = (C1 - min_) / (max_ - min_)
     p1, s1 = delta(C1)
     archive = [(s1, p1, C1)]
     i = 1
@@ -75,7 +78,7 @@ def part_and_select(P, N):
         c = np.mean(C, axis=0)
         idx = np.argmin(np.linalg.norm(C - c, axis=1))
         selected.append(C[idx])
-    return np.stack(selected)
+    return np.stack(selected) * (max_ - min_) + min_
 
 
 def matrix_subtraction(X, XS):

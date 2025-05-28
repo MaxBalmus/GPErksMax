@@ -70,6 +70,25 @@ class Wave:
 
         return I, PV
 
+    def compute_total_normalised_variance(self, X):
+        n_samples = X.shape[0]
+        output_dim = len(self.emulator)
+
+        # Collect all means and variances in one go
+        M = np.zeros((n_samples, output_dim), dtype=float)
+        V = np.zeros((n_samples, output_dim), dtype=float)
+        for j, emul in enumerate(self.emulator):
+            mean, std = emul.predict(X)  # Assuming std is std. deviation
+            M[:, j] = mean
+            V[:, j] = np.square(std)
+            
+        # Add small epsilon to prevent divide-by-zero
+        eps = 1e-10
+        PVn = V / (self.var + eps)
+
+        # Sort across output dimensions
+        PVt = PVn.sum(axis=1)
+        return PVt
 
     def find_regions(self, X):
         n_samples = X.shape[0]
