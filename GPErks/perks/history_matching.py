@@ -10,7 +10,7 @@ from GPErks.utils.indices import diff, part_and_select, whereq_whernot
 from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
-
+from time import time
 
 class Wave:
     """
