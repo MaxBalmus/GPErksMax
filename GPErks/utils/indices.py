@@ -129,7 +129,6 @@ def part_and_select(P, N):
         i += 1
         k += 1
     time1 = time()
-    print(flags.shape)
     print(f'Step 1 end {time1 - time0:.2f} s., search time {time00:.2f} s.')
     print('Step 2')
     print('Step 2 start')
