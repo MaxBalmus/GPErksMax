@@ -122,9 +122,7 @@ def main():
 
     # we have implemented different criteria, but you can implement your own stopping criterion
     # by following the same class structure as the ones imported here
-    from GPErks.train.early_stop import (
-        GLEarlyStoppingCriterion,
-    )
+    from GPErks.train.early_stop import GLEarlyStoppingCriterion
 
     max_epochs = 500
     esc = GLEarlyStoppingCriterion(max_epochs, alpha=0.1, patience=8)

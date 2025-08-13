@@ -77,9 +77,7 @@ def main():
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
 
     # snapshotting - save model state at a given epoch(s) while training
-    from GPErks.train.snapshot import (
-        EveryEpochSnapshottingCriterion,
-    )
+    from GPErks.train.snapshot import EveryEpochSnapshottingCriterion
 
     snapshot_dir = posix_path(
         os.getcwd(), "snapshot", "example_3"
