@@ -10,7 +10,7 @@ from GPErks.utils.indices import diff, part_and_select, whereq_whernot
 from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
-
+from time import time
 
 class Wave:
     """
@@ -44,24 +44,51 @@ class Wave:
         n_samples = X.shape[0]
         output_dim = len(self.emulator)
 
+        # Collect all means and variances in one go
         M = np.zeros((n_samples, output_dim), dtype=float)
         V = np.zeros((n_samples, output_dim), dtype=float)
         for j, emul in enumerate(self.emulator):
-            mean, std = emul.predict(X)
-            var = np.power(std, 2)
+            mean, std = emul.predict(X)  # Assuming std is std. deviation
             M[:, j] = mean
-            V[:, j] = var
+            V[:, j] = np.square(std)
 
-        I = np.zeros((n_samples,), dtype=float)
-        PV = np.zeros((n_samples,), dtype=float)
-        for i in range(n_samples):
-            In = np.sqrt((np.power(M[i, :] - self.mean, 2)) / (V[i, :] + self.var))
-            PVn = V[i, :] / self.var
+        # Add small epsilon to prevent divide-by-zero
+        eps = 1e-10
+        denom = V + self.var + eps
+        num = np.square(M - self.mean)
 
-            I[i] = np.sort(In)[-self.maxno]
-            PV[i] = np.sort(PVn)[-self.maxno]
+        In = np.sqrt(num / denom)  # shape: (n_samples, output_dim)
+        PVn = V / (self.var + eps)
+
+        # Sort across output dimensions
+        In_sorted = np.sort(In, axis=1)
+        PVn_sorted = np.sort(PVn, axis=1)
+
+        # Extract the maxno-th largest value (i.e., from the end)
+        I = In_sorted[:, -self.maxno]
+        PV = PVn_sorted[:, -self.maxno]
 
         return I, PV
+
+    def compute_total_normalised_variance(self, X):
+        n_samples = X.shape[0]
+        output_dim = len(self.emulator)
+
+        # Collect all means and variances in one go
+        M = np.zeros((n_samples, output_dim), dtype=float)
+        V = np.zeros((n_samples, output_dim), dtype=float)
+        for j, emul in enumerate(self.emulator):
+            mean, std = emul.predict(X)  # Assuming std is std. deviation
+            M[:, j] = mean
+            V[:, j] = np.square(std)
+            
+        # Add small epsilon to prevent divide-by-zero
+        eps = 1e-10
+        PVn = V / (self.var + eps)
+
+        # Sort across output dimensions
+        PVt = PVn.sum(axis=1)
+        return PVt
 
     def find_regions(self, X):
         n_samples = X.shape[0]
@@ -117,7 +144,7 @@ class Wave:
                 + "less than W.NIMP.shape[0] - 1."
             )
         else:
-            _, X = part_and_select(self.NIMP, n_points)
+            X = part_and_select(self.NIMP, n_points)
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
 
@@ -189,7 +216,7 @@ class Wave:
         log.info("\nDone.")
 
         nimp = len(self.nimp_idx)
-        _, NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
+        NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
         I, PV = self.compute_impl(NIMP_aug)
         self.NIMP = np.vstack((X[:nimp], NIMP_aug))
         self.I = np.concatenate((self.I, I))

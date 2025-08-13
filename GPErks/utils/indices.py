@@ -1,5 +1,5 @@
 import numpy as np
-
+from time import time
 
 def diff(l1, l2):
     return list(set(l1) - set(l2))
@@ -39,38 +39,109 @@ def find_start_seq(index, feat_dim):  # utility function for "whereq_whernot"
 
 
 def delta(X):  # utility function for "part_and_select"
-    delta_u_l = [(X[:, i].max() - X[:, i].min()) for i in range(X.shape[1])]
-    pj = np.argmax(delta_u_l)
-    return pj, delta_u_l[pj]
+    # compute per‐column min and max in one go
+    col_min = X.min(axis=0)
+    col_max = X.max(axis=0)
+    ranges = col_max - col_min
+
+    # pick the index and its range
+    pj = int(np.argmax(ranges))
+    return pj, float(ranges[pj])
 
 
-def part_and_select(P, N):
-    C1 = P
+def part_and_select_1(P, N):
+    C1 = P.copy()
+    min_ = C1.min(axis=0)
+    max_ = C1.max(axis=0)
+    C1 = (C1 - min_) / (max_ - min_)
     p1, s1 = delta(C1)
     archive = [(s1, p1, C1)]
     i = 1
+    print('Part and select')
+    print('Step 1 start')
+    time0 = time()
     while i < N:
         if all([not x[0] for x in archive]):
             break
         sj, pj, Cj = max(archive[:i], key=lambda x: x[0])
-        upj = np.max(Cj[:, pj])
-        lpj = np.min(Cj[:, pj])
-        Cj1 = np.array([x for x in Cj if x[pj] <= (upj + lpj) / 2])
-        Cj2 = np.array([x for x in Cj if x[pj] > (upj + lpj) / 2])
+        cpj = (np.max(Cj[:, pj]) + np.min(Cj[:, pj])) / 2
+        Cj1 = Cj[Cj[:,pj] <= cpj]
+        Cj2 = Cj[Cj[:,pj] >  cpj]
         pj1, sj1 = delta(Cj1)
         pj2, sj2 = delta(Cj2)
         archive.remove((sj, pj, Cj))
         archive.append((sj1, pj1, Cj1))
         archive.append((sj2, pj2, Cj2))
         i += 1
-    parts = [C for _, _, C in archive]
     selected = []
-    for C in parts:
+    time1 = time()
+    print(f'Step 1 end {time1 - time0:.2f} s.')
+    print('Step 2 start')
+    for _, _, C in archive:
         c = np.mean(C, axis=0)
         idx = np.argmin(np.linalg.norm(C - c, axis=1))
         selected.append(C[idx])
-    return parts, np.stack(selected)
+    time2 = time()
+    print(f'Step 2 end {time2 - time1:.2f} s.')
+    return np.stack(selected) * (max_ - min_) + min_
 
+def part_and_select(P, N):
+    C1 = P.copy()
+    min_ = C1.min(axis=0)
+    max_ = C1.max(axis=0)
+    C1 = (C1 - min_) / (max_ - min_)
+    p1, s1 = delta(C1)
+    n1 = C1.shape[0]
+    archive = np.zeros((2*N-1,3))
+    flags   = np.full((2*N-1,), True)
+    range_  = np.arange(2*N-1)
+    archive[0,:]  = s1, p1, n1
+    archive_array = np.zeros((n1, 2*N+1), dtype=np.uint32)
+    archive_array[:n1,0] = np.arange(n1, dtype=np.uint32)
+    k, j = 0, 1
+    print('Part and select')
+    print('Step 1')
+    print('Step 1 start')
+    time0 = time()
+    time00 = 0.
+    for i in range(1,N):
+        time01 = time()
+        subset = archive[flags][:i]  # slice once
+        ind = int(np.argmax(subset[:, 0]))
+        time00 += time() - time01
+        sj, pj, nj = subset[ind]
+        if sj < 1e-16: break
+        pj, nj = int(pj), int(nj)
+        ind2 = range_[flags][ind]
+        flags[ind2] = False
+        Cj_ind = archive_array[:nj,ind2]
+        cpj = (np.max(C1[Cj_ind, pj]) + np.min(C1[Cj_ind, pj])) / 2
+        Cj_flags = (C1[Cj_ind,pj] <= cpj)
+        nj1 = Cj_flags.sum()
+        nj2 = nj - nj1
+        archive_array[:nj1,j]   = Cj_ind[Cj_flags]
+        archive_array[:nj2,j+1] = Cj_ind[~Cj_flags]
+        pj1, sj1 = delta(C1[archive_array[:nj1,j]])
+        pj2, sj2 = delta(C1[archive_array[:nj2,j+1]])
+        archive[j ] [0:3] = np.array([sj1, pj1, nj1])
+        archive[j+1][0:3] = np.array([sj2, pj2, nj2])
+        j += 2
+        i += 1
+        k += 1
+    time1 = time()
+    print(f'Step 1 end {time1 - time0:.2f} s., search time {time00:.2f} s.')
+    print('Step 2')
+    print('Step 2 start')
+    selected = []
+    for i in range_[flags[:j]]:
+        nj = archive[i,2]
+        C = C1[archive_array[:int(nj),i]]
+        c = np.mean(C, axis=0)
+        idx = np.argmin(np.linalg.norm(C - c, axis=1))
+        selected.append(C[idx])
+    time2 = time()
+    print(f'Step 2 end {time2 - time1:.2f} s.')
+    return np.stack(selected) * (max_ - min_) + min_
 
 def matrix_subtraction(X, XS):
     set_X = set(map(tuple, X))
