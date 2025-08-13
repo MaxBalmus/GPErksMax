@@ -11,6 +11,7 @@ from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
 
+
 class Wave:
     """
     A module to perform Bayesian history matching using trained univariate emulators to
@@ -80,7 +81,7 @@ class Wave:
             mean, std = emul.predict(X)  # Assuming std is std. deviation
             M[:, j] = mean
             V[:, j] = np.square(std)
-            
+
         # Add small epsilon to prevent divide-by-zero
         eps = 1e-10
         PVn = V / (self.var + eps)

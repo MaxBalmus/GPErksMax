@@ -4,7 +4,6 @@
 def main():
     # import main libraries
     import os
-    from pathlib import Path
 
     import torch
 
@@ -80,7 +79,6 @@ def main():
     # snapshotting - save model state at a given epoch(s) while training
     from GPErks.train.snapshot import (
         EveryEpochSnapshottingCriterion,
-        EveryNEpochsSnapshottingCriterion,
     )
 
     snapshot_dir = posix_path(

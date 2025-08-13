@@ -261,8 +261,10 @@ class KFoldCrossValidation(Trainable):
 
         inference = Inference(emulator)
         inference.summary(printtoconsole=False)
-        
-        best_model_trans = {key: val.cpu().detach().numpy() for key, val in best_model.items()}
+
+        best_model_trans = {
+            key: val.cpu().detach().numpy() for key, val in best_model.items()
+        }
 
         best_model_trans = {
             key: val.cpu().detach().numpy() for key, val in best_model.items()

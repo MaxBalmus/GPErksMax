@@ -42,14 +42,10 @@ setup(
         "Source Code": home_page,
     },
     extras_require={
-        "dev": read_requirements(
-            os.path.join("requirements", "requirements-dev.txt")
-        ),
+        "dev": read_requirements(os.path.join("requirements", "requirements-dev.txt")),
     },
     include_package_data=True,
-    package_data={
-        "": ["*.yaml", "*.repo"]
-    },
+    package_data={"": ["*.yaml", "*.repo"]},
     classifiers=[
         # How mature is this project? Common values are
         # 3 - Alpha, 4 - Beta, 5 - Production/Stable
@@ -64,5 +60,5 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    ]
+    ],
 )

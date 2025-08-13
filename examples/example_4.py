@@ -124,8 +124,6 @@ def main():
     # by following the same class structure as the ones imported here
     from GPErks.train.early_stop import (
         GLEarlyStoppingCriterion,
-        PQEarlyStoppingCriterion,
-        UPEarlyStoppingCriterion,
     )
 
     max_epochs = 500
