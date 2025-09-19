@@ -10,7 +10,7 @@ from GPErks.utils.indices import diff, part_and_select, whereq_whernot
 from GPErks.utils.jsonfiles import load_json, save_json
 
 log = get_logger()
-from time import time
+
 
 class Wave:
     """
@@ -81,7 +81,7 @@ class Wave:
             mean, std = emul.predict(X)  # Assuming std is std. deviation
             M[:, j] = mean
             V[:, j] = np.square(std)
-            
+
         # Add small epsilon to prevent divide-by-zero
         eps = 1e-10
         PVn = V / (self.var + eps)

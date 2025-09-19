@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 #
-# 8. GPE auto-training + GSA using external dataset (from publication) loaded from json file
+# 8. GPE auto-training + GSA using external dataset (from publication)
+# loaded from json file
 #
 import os
 
 import torch
 from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.likelihoods import GaussianLikelihood
-from gpytorch.means import LinearMean
 
 from GPErks.constants import DEFAULT_RANDOM_SEED
 from GPErks.gp.data.dataset import Dataset
@@ -23,13 +22,18 @@ def main():
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
-    # This new method loads your dataset into a dictionary where keys = features, values = Dataset objects
-    # (each Dataset is built to create the experiment that will emulate the corresponding scalar feature (key))
-    datasets = Dataset.build_from_file(posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json"))
+    # This new method loads your dataset into a dictionary where
+    # keys = features, values = Dataset objects
+    # (each Dataset is built to create the experiment that will
+    # emulate the corresponding scalar feature (key))
+    datasets = Dataset.build_from_file(
+        posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json")
+    )
     features = list(datasets.keys())
     print(features)  # available features to be emulated
 
-    # # Note: if you want to create a .json file containing your dataset, you can do so like this:
+    # # Note: if you want to create a .json file containing your dataset,
+    # you can do so like this:
     # X = np.loadtxt(data_dir / "X.txt", dtype=float)
     # Y = np.loadtxt(data_dir / "Y.txt", dtype=float)
     # xlabels = read_labels_from_file(data_dir / "xlabels.txt")
@@ -61,13 +65,7 @@ def main():
     likelihood = GaussianLikelihood()
     mean = LinearMean(degree=1, input_size=dataset.input_size, bias=True)
     covariance = ScaleKernel(MaternKernel(ard_num_dims=dataset.input_size))
-    experiment = GPExperiment(
-        dataset,
-        likelihood,
-        mean,
-        covariance,
-        seed=seed
-    )
+    experiment = GPExperiment(dataset, likelihood, mean, covariance, seed=seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     emulator = GPEmulator(experiment, device)
     emulator.train_auto()
@@ -81,6 +79,7 @@ def main():
 
     # plotting estimated Sobol' indices
     import matplotlib.pyplot as plt
+
     plt.style.use("seaborn-v0_8")
     fig, axis = plt.subplots(1, 1)
     gsa.plot(axis=axis, type="bar", colors="tab10")

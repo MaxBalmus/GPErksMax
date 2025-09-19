@@ -7,7 +7,9 @@ if torch.cuda.is_available():
     multiprocessing.set_start_method("spawn", force=True)
 
 
-def execute_task_in_parallel(task_fn, inputs, max_workers=multiprocessing.cpu_count()):
+def execute_task_in_parallel(task_fn, inputs, max_workers=None):
+    if max_workers is None:
+        max_workers = multiprocessing.cpu_count()
     results = {}
     with _get_process_pool_executor(max_workers) as executor:
         future_results = {
@@ -18,5 +20,7 @@ def execute_task_in_parallel(task_fn, inputs, max_workers=multiprocessing.cpu_co
     return results
 
 
-def _get_process_pool_executor(max_workers=multiprocessing.cpu_count()):
+def _get_process_pool_executor(max_workers=None):
+    if max_workers is None:
+        max_workers = multiprocessing.cpu_count()
     return concurrent.futures.ProcessPoolExecutor(max_workers)

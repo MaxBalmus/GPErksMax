@@ -55,7 +55,9 @@ class Dataset(Plottable):
             descr if descr else "An example dataset to test GPErks' power!"
         )
 
-    def plot(self, plot_options: PlotOptions = PlotOptions()):
+    def plot(self, plot_options: PlotOptions = None):
+        if plot_options is None:
+            plot_options = PlotOptions()
         self.plot_train()
 
     def plot_pairwise(self):
