@@ -5,7 +5,9 @@ from GPErks.utils.polynomialfeatures import PolynomialFeatures
 
 
 class LinearMean(gpytorch.means.Mean):
-    def __init__(self, degree, input_size, batch_shape=torch.Size(), bias=True):
+    def __init__(self, degree, input_size, batch_shape=None, bias=True):
+        if batch_shape is None:
+            batch_shape = torch.Size([])
         super().__init__()
         self.degree = degree
         self.input_size = input_size

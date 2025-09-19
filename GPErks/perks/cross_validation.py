@@ -67,19 +67,25 @@ class KFoldCrossValidation(Trainable):
     def train(
         self,
         optimizer,
-        early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
-            DEFAULT_TRAIN_MAX_EPOCH
-        ),
-        snapshotting_criterion: SnapshottingCriterion = NeverSaveSnapshottingCriterion(
-            posix_path(
-                DEFAULT_TRAIN_SNAPSHOT_DIR,
-                DEFAULT_TRAIN_SNAPSHOT_SPLIT_TEMPLATE,
-                DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
-            ),
-            DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
-        ),
+        early_stopping_criterion: EarlyStoppingCriterion = None,
+        snapshotting_criterion: SnapshottingCriterion = None,
         leftout_is_val: bool = False,
     ):
+        if early_stopping_criterion is None:
+            early_stopping_criterion = (
+                NoEarlyStoppingCriterion(DEFAULT_TRAIN_MAX_EPOCH),
+            )
+        if snapshotting_criterion is None:
+            snapshotting_criterion = (
+                NeverSaveSnapshottingCriterion(
+                    posix_path(
+                        DEFAULT_TRAIN_SNAPSHOT_DIR,
+                        DEFAULT_TRAIN_SNAPSHOT_SPLIT_TEMPLATE,
+                        DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
+                    ),
+                    DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
+                ),
+            )
         self.leftout_is_val = leftout_is_val
 
         X = self.experiment.dataset.X_train

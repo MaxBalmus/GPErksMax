@@ -68,17 +68,19 @@ class GPEmulator(Trainable):
     def train(
         self,
         optimizer,
-        early_stopping_criterion: EarlyStoppingCriterion = NoEarlyStoppingCriterion(
-            DEFAULT_TRAIN_MAX_EPOCH
-        ),
-        snapshotting_criterion: SnapshottingCriterion = NeverSaveSnapshottingCriterion(
-            posix_path(
-                DEFAULT_TRAIN_SNAPSHOT_DIR,
-                DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
-            ),
-            DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
-        ),
+        early_stopping_criterion: EarlyStoppingCriterion = None,
+        snapshotting_criterion: SnapshottingCriterion = None,
     ):
+        if early_stopping_criterion is None:
+            early_stopping_criterion = NoEarlyStoppingCriterion(DEFAULT_TRAIN_MAX_EPOCH)
+        if snapshotting_criterion is None:
+            snapshotting_criterion = NeverSaveSnapshottingCriterion(
+                posix_path(
+                    DEFAULT_TRAIN_SNAPSHOT_DIR,
+                    DEFAULT_TRAIN_SNAPSHOT_RESTART_TEMPLATE,
+                ),
+                DEFAULT_TRAIN_SNAPSHOT_EPOCH_TEMPLATE,
+            )
         log.info("Training emulator...")
 
         X_train = self.scaled_data.X_train.to(self.device)
