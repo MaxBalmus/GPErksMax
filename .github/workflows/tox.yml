@@ -25,10 +25,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Clean workspace
+      run: |
+        sudo apt-get clean
+        rm -rf /tmp/*
     - name: Install GPErks[dev]
       run: |
         python -m pip install --upgrade pip
-        python -m pip install .[dev]
+        python -m pip install --no-cache-dir .[dev]
     - name: Run tox
       run: |
         tox
