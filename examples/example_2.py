@@ -53,10 +53,8 @@ def main():
     # choose metrics
     from torchmetrics import R2Score
 
-    from GPErks.utils.metrics import (
-        IndependentStandardError,
-        # not available from torchmetrics -> we implemented it
-    )
+    # not available from torchmetrics -> we implemented it
+    from GPErks.utils.metrics import IndependentStandardError
 
     metrics = [IndependentStandardError(), R2Score()]
 

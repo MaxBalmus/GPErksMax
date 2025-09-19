@@ -44,8 +44,10 @@ def main():
         x_labels=xlabels,
         y_label=ylabel,
         name="CanopyReflectance",
-        descr=("A reflectance model for the homogeneous plant canopy " +
-               "and its inversion (doi.org/10.1016/0034-4257(89)90015-1)"),
+        descr=(
+            "A reflectance model for the homogeneous plant canopy "
+            + "and its inversion (doi.org/10.1016/0034-4257(89)90015-1)"
+        ),
     )
     dataset.summary()
 
