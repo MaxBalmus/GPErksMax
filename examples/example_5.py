@@ -44,7 +44,8 @@ def main():
         x_labels=xlabels,
         y_label=ylabel,
         name="CanopyReflectance",
-        descr="A reflectance model for the homogeneous plant canopy and its inversion (doi.org/10.1016/0034-4257(89)90015-1)",
+        descr=("A reflectance model for the homogeneous plant canopy " +
+               "and its inversion (doi.org/10.1016/0034-4257(89)90015-1)"),
     )
     dataset.summary()
 
@@ -73,10 +74,12 @@ def main():
     )
 
     # perk n.3:  K-fold cross-validation training;
-    # when providing a validation set as in this example, this will be used to stop training
-    # at the right moment for EVERY split, while the accuracy of the split-specific emulator
-    # will be obtained by testing against the respective split-specific left-out part of
-    # the training dataset
+    # when providing a validation set as in this example,
+    # this will be used to stop training
+    # at the right moment for EVERY split, while the accuracy of
+    # the split-specific emulator
+    # will be obtained by testing against the respective split-specific
+    # left-out part of the training dataset
     from GPErks.perks.cross_validation import KFoldCrossValidation
     from GPErks.train.early_stop import GLEarlyStoppingCriterion
 
@@ -86,8 +89,10 @@ def main():
 
     optimizer = torch.optim.Adam(experiment.model.parameters(), lr=0.1)
     esc = GLEarlyStoppingCriterion(max_epochs=1000, alpha=0.1, patience=8)
-    # similarly to simple training, when doing cross-validation we can again output both
-    # the best model state (a dict) and its training statistics (an object); since we have
+    # similarly to simple training, when doing
+    # cross-validation we can again output both
+    # the best model state (a dict) and its training
+    # statistics (an object); since we have
     # different folds, these will be dictionaries with fold numbers used as keys
     best_model_dct, best_train_stats_dct = kfcv.train(
         optimizer,
@@ -104,7 +109,8 @@ def main():
     for _, bts in best_train_stats_dct.items():
         bts.plot(with_early_stopping_criterion=True)
 
-    # best-split emulator (according to highest R2-score) is automatically available within kfcv instance
+    # best-split emulator (according to highest R2-score) is automatically
+    # available within kfcv instance
     from GPErks.perks.inference import Inference
 
     inference = Inference(kfcv.emulator)
@@ -113,7 +119,8 @@ def main():
     # check best-split emulator fitted hyperparameters
     kfcv.emulator.hyperparameters()
 
-    # note the size differences between train and test sets here compared to original dataset train and val sets
+    # note the size differences between train and test sets here compared to
+    # original dataset train and val sets
     kfcv.emulator.experiment.dataset.summary()
 
 

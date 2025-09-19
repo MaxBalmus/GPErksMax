@@ -107,30 +107,38 @@ def main():
     inference.summary()
 
     # loading experiment from config file
-    del experiment  # let's delete the original experiment before being able to re-create it from file
+    del experiment
+    # let's delete the original experiment before being able to re-create it from file
     from GPErks.gp.experiment import load_experiment_from_config_file
 
     experiment = load_experiment_from_config_file(
         config_file,
-        dataset,  # data is not saved in config file to save memory, so we still need to pass the dataset used!
+        dataset,
+        # data is not saved in config file to save memory,
+        # so we still need to pass the dataset used!
     )
 
     # loading emulator from best model file
-    del emulator  # let's delete the original emulator befor being able to re-create it from file
+    del emulator
+    # let's delete the original emulator before being able to re-create it from file
 
     # create an emulator instance
     emulator = GPEmulator(experiment, device)
     emulator.hyperparameters()  # trained hyperparameters are NOT YET loaded
 
-    # by default, after training, a symbolic link to the best emulator across the different restarts run is
+    # by default, after training, a symbolic link to the best emulator across
+    # the different restarts run is
     # created; this can be accessed under the name of "best_model.pth"
     best_model_file = posix_path(snapshot_dir, "best_model.pth")
 
-    # update experiment model internal hyperparameters using values stored in best model file
+    # update experiment model internal hyperparameters using values
+    # stored in best model file
     emulator.load_state(best_model_file)
-    emulator.hyperparameters()  # now hyperparameters match the values seen right after training
+    emulator.hyperparameters()
+    # now hyperparameters match the values seen right after training
 
-    # sanity check: metrics' values should be the same as the ones obtained right after training
+    # sanity check: metrics' values should be the same as the ones
+    # obtained right after training
     inference = Inference(emulator)
     inference.summary()
 

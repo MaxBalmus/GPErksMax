@@ -1,6 +1,7 @@
 #
 # 9. Showcasing new functionalities: automatic emulator hyperparameters' fitting
-# + LinearMean module with higher than first degree polynomials + mean module fit inspection
+# + LinearMean module with higher than first degree polynomials + mean module fit
+# inspection
 #
 def main():
     # import main libraries

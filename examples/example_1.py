@@ -33,9 +33,8 @@ def main():
         l_bounds=[
             0
         ],  # for d-dimensional input, l_bounds and u_bounds must be lists of length = d
-        u_bounds=[
-            1
-        ],  # could omit l_bounds and u_bounds if, as in this case, input parameters live in [0, 1]
+        u_bounds=[1],  # could omit l_bounds and u_bounds if, as in this case,
+        # input parameters live in [0, 1]
     )
     # we can get a coincise summary of the dataset like this:
     dataset.summary()
@@ -84,8 +83,10 @@ def main():
     emulator.train(optimizer)
 
     # check fitted hyperparameters;
-    # by default, after training, the best emulator stored in the emulator instance is the one that achieved
-    # the lowest training loss (or validation loss if we provided a validation dataset) across the different
+    # by default, after training, the best emulator stored in
+    # the emulator instance is the one that achieved
+    # the lowest training loss (or validation loss if we
+    # provided a validation dataset) across the different
     # restarts we have run
     emulator.hyperparameters()
 

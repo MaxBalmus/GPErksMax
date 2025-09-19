@@ -1,12 +1,12 @@
 #
-# 8. GPE auto-training + GSA using external dataset (from publication) loaded from json file
+# 8. GPE auto-training + GSA using external dataset (from publication)
+# loaded from json file
 #
 import os
 
 import torch
 from gpytorch.kernels import MaternKernel, ScaleKernel
 from gpytorch.likelihoods import GaussianLikelihood
-from gpytorch.means import LinearMean
 
 from GPErks.constants import DEFAULT_RANDOM_SEED
 from GPErks.gp.data.dataset import Dataset
@@ -22,15 +22,18 @@ def main():
     seed = DEFAULT_RANDOM_SEED
     set_seed(seed)
 
-    # This new method loads your dataset into a dictionary where keys = features, values = Dataset objects
-    # (each Dataset is built to create the experiment that will emulate the corresponding scalar feature (key))
+    # This new method loads your dataset into a dictionary where
+    # keys = features, values = Dataset objects
+    # (each Dataset is built to create the experiment that will
+    # emulate the corresponding scalar feature (key))
     datasets = Dataset.build_from_file(
         posix_path(os.getcwd(), "examples", "data", "datasets", "Stefano_16p.json")
     )
     features = list(datasets.keys())
     print(features)  # available features to be emulated
 
-    # # Note: if you want to create a .json file containing your dataset, you can do so like this:
+    # # Note: if you want to create a .json file containing your dataset,
+    # you can do so like this:
     # X = np.loadtxt(data_dir / "X.txt", dtype=float)
     # Y = np.loadtxt(data_dir / "Y.txt", dtype=float)
     # xlabels = read_labels_from_file(data_dir / "xlabels.txt")

@@ -29,7 +29,8 @@ def main():
     y = f(x.T).reshape(n, n)
 
     # plot synthetic data, i.e. deterministic function evaluations;
-    # note: we highlight with a contour plot a specific region of the parameter space where
+    # note: we highlight with a contour plot a specific region of the
+    # parameter space where
     # the deterministic function evaluates to 8
     fig, axis = plt.subplots(1, 1)
     pc = axis.pcolormesh(x1, x2, y, cmap="coolwarm", shading="auto")
@@ -42,11 +43,13 @@ def main():
     fig.tight_layout()
     plt.show()
 
-    # we generate a synthetic experimental datum (mean and var) we aim to match by using history matching
+    # we generate a synthetic experimental datum (mean and var) we
+    # aim to match by using history matching
     exp_mean = np.array([8.0])
     exp_var = 0.1 * exp_mean
 
-    # we now train a univariate Gaussian process emulator (GPE) to replace the mapping f: X -> y
+    # we now train a univariate Gaussian process emulator
+    # (GPE) to replace the mapping f: X -> y
 
     # build dataset
     from GPErks.gp.data.dataset import Dataset
@@ -109,16 +112,20 @@ def main():
     inference.plot()
 
     # inspect fitted mean module
-    # Note: to have an almost perfect emulator, we kind of cheated when selecting degree=2 for the mean function.
-    # In fact, we knew already that the underlying, deterministic function was an ellipsoid
+    # Note: to have an almost perfect emulator,
+    # we kind of cheated when selecting degree=2 for the mean function.
+    # In fact, we knew already that the underlying,
+    # deterministic function was an ellipsoid
     from GPErks.plot.mean import inspect_mean_module
 
     inspect_mean_module(emulator)
 
     # run the first wave (iteration) of history matching
     cutoff = 3.0  # threshold for the implausibility measure
-    maxno = 1  # the first highest implausibility value (worse emulator prediction) deems a point to be implausible
-    # Note: maxno is not relevant in this case since we only have 1 emulator to match one experimental datum
+    maxno = 1  # the first highest implausibility value
+    # (worse emulator prediction) deems a point to be implausible
+    # Note: maxno is not relevant in this case since we
+    # only have 1 emulator to match one experimental datum
     from GPErks.utils.array import get_minmax
 
     minmax = get_minmax(
@@ -138,7 +145,8 @@ def main():
         var=exp_var,
     )
 
-    # create a huge, 100k points parameter space to be explored all at once using the trained emulator
+    # create a huge, 100k points parameter space to
+    # be explored all at once using the trained emulator
     from GPErks.utils.sampling import Sampler
 
     sampler = Sampler(
@@ -151,18 +159,21 @@ def main():
         u_bounds=list(minmax[:, 1]),
     )
 
-    # explore the parameter space to see which parameter points are non-implausible or implausible
+    # explore the parameter space to see which parameter
+    # points are non-implausible or implausible
     # to match the synthetic experimental datum
     w.find_regions(x)
     w.print_stats()
     w.plot_wave(xlabels=xlabels, display="impl")
-    # Note: the non-implausible region has a circular shape, simular to the 8-value isoline we saw before
+    # Note: the non-implausible region has a circular shape,
+    # simular to the 8-value isoline we saw before
 
     # check that the found non-implausible parameter space is actually compatible with
     # matching the syntactic experimental datum by evaluating the true function
     y_actual = f(w.NIMP.T)
 
-    # plot the actual values' distribution to see if it matches the synthetic experimental datum distribution
+    # plot the actual values' distribution to see if it
+    # matches the synthetic experimental datum distribution
     fig, axis = plt.subplots(1, 1)
     axis.boxplot(y_actual)
     axis.axhline(exp_mean, c="r", ls="--")

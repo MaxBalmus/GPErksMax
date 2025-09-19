@@ -30,8 +30,10 @@ def main():
         seed=seed,
     )
     dataset.summary()
-    dataset.plot()  # plot (multi-dimensional) input vs scalar output to check for relationships
-    dataset.plot_pairwise()  # plot input vs input to check for parameter space coverage
+    dataset.plot()
+    # plot (multi-dimensional) input vs scalar output to check for relationships
+    dataset.plot_pairwise()
+    # plot input vs input to check for parameter space coverage
 
     # choose likelihood
     from gpytorch.likelihoods import GaussianLikelihood
@@ -52,7 +54,8 @@ def main():
     from torchmetrics import R2Score
 
     from GPErks.utils.metrics import (
-        IndependentStandardError,  # not available from torchmetrics -> we implemented it
+        IndependentStandardError,
+        # not available from torchmetrics -> we implemented it
     )
 
     metrics = [IndependentStandardError(), R2Score()]

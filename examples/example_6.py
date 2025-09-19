@@ -143,7 +143,8 @@ def main():
 
     emulator.experiment.metrics = [IndependentStandardError(), R2Score()]
 
-    # we are achieving a very high R2Score using only 25 points and without a validation set, magic!
+    # we are achieving a very high R2Score using only 25 points and without
+    # a validation set, magic!
     from GPErks.perks.inference import Inference
 
     inference = Inference(emulator)
