@@ -162,9 +162,10 @@ class Wave:
         )
 
         count = 0
+        n_current = X.shape[0]
         a, b = (
-            X.shape[0] if X.shape[0] < n_total_points else n_total_points,
-            n_total_points - X.shape[0] if n_total_points - X.shape[0] > 0 else 0,
+            n_current if n_current < n_total_points else n_total_points,
+            n_total_points - n_current if n_total_points - n_current > 0 else 0,
         )
         log.info(
             f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
@@ -172,7 +173,10 @@ class Wave:
             + f"Missing: {b:<{len(str(n_total_points))}}"
         )
 
-        while X.shape[0] < n_total_points:
+        # Accumulate new points in a list instead of repeated vstack
+        new_points = []
+        
+        while n_current < n_total_points:
             count += 1
 
             bounds = get_minmax(X)
@@ -181,31 +185,35 @@ class Wave:
             )
 
             temp = np.random.normal(loc=X, scale=scale)
+            
+            # Vectorized boundary checking
             count2 = 0
             while True:
                 count2 += 1
-                d1 = temp - lbounds.reshape((1, -1))
-                d2 = ubounds.reshape((1, -1)) - temp
-                flag = np.logical_or(
-                    np.sum(np.sign(d1), axis=1) != temp.shape[1],
-                    np.sum(np.sign(d2), axis=1) != temp.shape[1],
-                )
+                # Direct comparison: True where in bounds
+                in_bounds = np.all((temp >= lbounds) & (temp <= ubounds), axis=1)
+                out_of_bounds = ~in_bounds
+                
                 if count2 > n_max:
-                    temp = temp[~flag, :]
+                    temp = temp[in_bounds]
                     break
-                if np.sum(flag) > 0:
-                    temp[flag, :] = np.random.normal(loc=X[flag, :], scale=scale)
+                if np.any(out_of_bounds):
+                    temp[out_of_bounds] = np.random.normal(loc=X[out_of_bounds], scale=scale)
                     continue
                 else:
                     break
 
             I, _ = self.compute_impl(temp)
             nimp_idx = np.where(I < self.cutoff)[0]
-            X = np.vstack((X, temp[nimp_idx]))
+            valid_points = temp[nimp_idx]
+            
+            if len(valid_points) > 0:
+                new_points.append(valid_points)
+                n_current += len(valid_points)
 
             a, b = (
-                X.shape[0] if X.shape[0] < n_total_points else n_total_points,
-                n_total_points - X.shape[0] if n_total_points - X.shape[0] > 0 else 0,
+                n_current if n_current < n_total_points else n_total_points,
+                n_total_points - n_current if n_total_points - n_current > 0 else 0,
             )
             log.info(
                 f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
@@ -214,6 +222,10 @@ class Wave:
             )
 
         log.info("\nDone.")
+        
+        # Combine all points at once
+        if new_points:
+            X = np.vstack([X] + new_points)
 
         nimp = len(self.nimp_idx)
         NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
