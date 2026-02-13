@@ -177,3 +177,12 @@ def filter_zscore(X, thre):
     nl = union_many(L)
     l = diff(range(X.shape[0]), nl)
     return l, nl
+
+def part_and_select_train_test_split(X, y, N):
+    X_train = part_and_select(X, N)
+    l, nl = whereq_whernot(X, X_train)
+    X_test = X[nl] 
+    
+    y_train = y[l]
+    y_test = y[nl]
+    return X_train, X_test, y_train, y_test

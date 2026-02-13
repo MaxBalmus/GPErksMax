@@ -40,7 +40,7 @@ class Wave:
         self.IMP = None
         self.imp_idx = None
 
-    def compute_impl(self, X):
+    def compute_impl(self, X, compute_I0 = False):
         n_samples = X.shape[0]
         output_dim = len(self.emulator)
 
@@ -59,14 +59,19 @@ class Wave:
 
         In = np.sqrt(num / denom)  # shape: (n_samples, output_dim)
         PVn = V / (self.var + eps)
+        if compute_I0: I0n = np.sqrt(num / (self.var + eps))
 
         # Sort across output dimensions
         In_sorted = np.sort(In, axis=1)
         PVn_sorted = np.sort(PVn, axis=1)
+        if compute_I0: I0n_sorted = np.sort(I0n, axis=1)
 
         # Extract the maxno-th largest value (i.e., from the end)
         I = In_sorted[:, -self.maxno]
         PV = PVn_sorted[:, -self.maxno]
+        if compute_I0: 
+            I0 = I0n_sorted[:, -self.maxno]
+            return I, PV, I0
 
         return I, PV
 
@@ -147,6 +152,66 @@ class Wave:
             X = part_and_select(self.NIMP, n_points)
             _, nl = whereq_whernot(self.NIMP, X)
         return X, self.NIMP[nl]
+
+    def get_nimps_adaptive(self, n_points, cutoff=3.0):
+        """
+        Adaptive version of get_nimps that prioritizes points with high GPE variance, 
+        high implausibility, and spatial diversity for training Gaussian process emulators.
+        
+        Parameters
+        ----------
+        n_points : int
+            Number of points to select for training
+        alpha : float, optional
+            Weight for implausibility score (default: 0.5)
+            Higher values prioritize points closer to the implausibility boundary
+        beta : float, optional  
+            Weight for variance score (default: 0.5)
+            Higher values prioritize points with high emulator uncertainty
+        top_fraction : float, optional
+            Fraction of NIMP points to consider (default: 0.2, must be <= 1.0)
+            Selects top (top_fraction * nimp) candidates before applying part_and_select
+            Higher values expand the candidate pool for better spatial diversity
+            
+        Returns
+        -------
+        X : np.ndarray
+            Selected training points with shape (n_points, input_dim)
+        X_remaining : np.ndarray
+            Remaining NIMP points not selected for training
+            
+        Notes
+        -----
+        Two-stage selection process:
+        1. Score all NIMP points: alpha * normalized_implausibility + beta * normalized_variance
+        2. Select top (top_fraction * nimp) candidates by score
+        3. Apply part_and_select to ensure spatial diversity among candidates
+        This balances information value (implausibility + variance) with spatial spread.
+        """
+        nimp = len(self.nimp_idx)
+        if n_points >= nimp - 1:
+            raise ValueError(
+                "Not enough NIMP points to choose from! n_points must be strictly "
+                + "less than W.NIMP.shape[0] - 1."
+            )
+        
+        # Compute implausibility and variance for all NIMP points
+        _, _, I0 = self.compute_impl(self.NIMP, compute_I0=True)
+        
+        # Find the candidate points which have an ideal implausibility higher than cutoff
+        candidate_mask = I0 >= cutoff
+        
+        # Select top candidates based on quality scores
+        candidates = self.NIMP[candidate_mask]
+        
+        # Apply part_and_select for spatial diversity
+        X = part_and_select(candidates, n_points)
+        
+        # Find remaining points
+        _, nl = whereq_whernot(self.NIMP, X)
+        X_remaining = self.NIMP[nl]
+        
+        return X, X_remaining
 
     # Note: the Wave object instance internal structure will be compromised after
     # calling this method: we recommend calling self.copy() and/or self.save()
