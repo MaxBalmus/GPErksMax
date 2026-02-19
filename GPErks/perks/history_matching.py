@@ -217,17 +217,17 @@ class Wave:
     # calling this method: we recommend calling self.copy() and/or self.save()
     # beforehand!
     def augment_nimp(self, n_total_points, scaling=0.1, n_max=2000):
-        X = np.copy(self.NIMP)
+        X0 = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
         ubounds = self.Itrain[:, 1]
 
         log.info(
             f"\nRequested points: {n_total_points}\nAvailable points: "
-            + f"{X.shape[0]}\nStart searching..."
+            + f"{X0.shape[0]}\nStart searching..."
         )
 
         count = 0
-        n_current = X.shape[0]
+        n_current = X0.shape[0]
         a, b = (
             n_current if n_current < n_total_points else n_total_points,
             n_total_points - n_current if n_total_points - n_current > 0 else 0,
@@ -239,17 +239,21 @@ class Wave:
         )
 
         # Accumulate new points in a list instead of repeated vstack
-        new_points = []
+        # new_points = []
+        
+        # Preallocate a temporary array for perturbations to avoid repeated allocations
+        X = np.zeros((n_total_points, X0.shape[1]), dtype=float)
+        X[:n_current] = X0
         
         while n_current < n_total_points:
             count += 1
 
-            bounds = get_minmax(X)
+            bounds = get_minmax(X[:n_current])
             scale = scaling * np.array(
                 [bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])]
             )
 
-            temp = np.random.normal(loc=X, scale=scale)
+            temp = np.random.normal(loc=X[:n_current], scale=scale)
             
             # Vectorized boundary checking
             count2 = 0
@@ -263,7 +267,7 @@ class Wave:
                     temp = temp[in_bounds]
                     break
                 if np.any(out_of_bounds):
-                    temp[out_of_bounds] = np.random.normal(loc=X[out_of_bounds], scale=scale)
+                    temp[out_of_bounds] = np.random.normal(loc=X[:n_current][out_of_bounds], scale=scale)
                     continue
                 else:
                     break
@@ -273,7 +277,11 @@ class Wave:
             valid_points = temp[nimp_idx]
             
             if len(valid_points) > 0:
-                new_points.append(valid_points)
+                # new_points.append(valid_points)
+                if n_current + len(valid_points) > n_total_points:
+                    X = np.vstack((X[:n_current], valid_points))
+                else:
+                    X[n_current:n_current + len(valid_points)] = valid_points
                 n_current += len(valid_points)
 
             a, b = (
@@ -289,8 +297,8 @@ class Wave:
         log.info("\nDone.")
         
         # Combine all points at once
-        if new_points:
-            X = np.vstack([X] + new_points)
+        # if new_points:
+        #     X = np.vstack([X] + new_points)
 
         nimp = len(self.nimp_idx)
         NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
