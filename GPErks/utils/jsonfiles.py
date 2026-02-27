@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import numpy
+import pickle
 
 from GPErks.serialization.labels import read_labels_from_file
 
@@ -22,6 +23,11 @@ def save_json(dct, filename):
         json.dump(dct, f, cls=NumpyEncoder, indent=4)
     return
 
+def save_pickle(dct, filename):
+    with open(filename, "wb") as f:
+        pickle.dump(dct, f)
+    return
+
 
 def numpy_hook(dct):
     for key, value in dct.items():
@@ -35,6 +41,12 @@ def load_json(filename):
     dct = {}
     with open(filename, "r") as f:
         dct = json.load(f, object_hook=numpy_hook)
+    return dct
+
+def load_pickle(filename):
+    dct = {}
+    with open(filename, "rb") as f:
+        dct = pickle.load(f)
     return dct
 
 

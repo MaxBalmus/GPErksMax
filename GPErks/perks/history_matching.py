@@ -7,7 +7,7 @@ from scipy.stats import iqr
 from GPErks.log.logger import get_logger
 from GPErks.utils.array import get_minmax
 from GPErks.utils.indices import diff, part_and_select, whereq_whernot
-from GPErks.utils.jsonfiles import load_json, save_json
+from GPErks.utils.jsonfiles import load_json, save_json, load_pickle, save_pickle
 
 log = get_logger()
 
@@ -129,15 +129,28 @@ class Wave:
         X[self.imp_idx] = self.IMP
         return X
 
-    def save(self, filename):
+    def save(self, filename:str):
         dct = vars(self)
         excluded_keys = ["emulator"]
         obj_dct = {}
         obj_dct.update({k: dct[k] for k in set(list(dct.keys())) - set(excluded_keys)})
-        save_json(obj_dct, filename)
+        # save_json(obj_dct, filename)
+        if '.json' in filename:
+            filename_pkl = filename.replace('.json', '.pkl')
+        elif '.pkl' not in filename:
+            filename_pkl = filename + '.pkl'
+        else:
+            filename_pkl = filename
+        save_pickle(obj_dct, filename_pkl)
 
     def load(self, filename):
-        obj_dict = load_json(filename)
+        if '.json' in filename:
+            filename_pkl = filename.replace('.json', '.pkl')
+        elif '.pkl' not in filename:
+            filename_pkl = filename + '.pkl'
+        else:
+            filename_pkl = filename
+        obj_dict = load_pickle(filename_pkl)
         for k, v in obj_dict.items():
             setattr(self, k, v)
 
