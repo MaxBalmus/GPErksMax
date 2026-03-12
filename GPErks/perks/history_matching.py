@@ -7,7 +7,8 @@ from scipy.stats import iqr
 from GPErks.log.logger import get_logger
 from GPErks.utils.array import get_minmax
 from GPErks.utils.indices import diff, part_and_select, whereq_whernot
-from GPErks.utils.jsonfiles import load_json, save_json, load_pickle, save_pickle
+from GPErks.utils.jsonfiles import load_pickle, save_pickle
+from GPErks.utils.parallel_inference import parallel_inference
 
 log = get_logger()
 
@@ -26,6 +27,7 @@ class Wave:
         maxno=None,
         mean=None,
         var=None,
+        n_cores=1
     ):
         self.emulator = emulator
         self.Itrain = Itrain
@@ -39,18 +41,22 @@ class Wave:
         self.nimp_idx = None
         self.IMP = None
         self.imp_idx = None
+        self.n_cores = n_cores
 
     def compute_impl(self, X, compute_I0 = False):
         n_samples = X.shape[0]
         output_dim = len(self.emulator)
 
-        # Collect all means and variances in one go
-        M = np.zeros((n_samples, output_dim), dtype=float)
-        V = np.zeros((n_samples, output_dim), dtype=float)
-        for j, emul in enumerate(self.emulator):
-            mean, std = emul.predict(X)  # Assuming std is std. deviation
-            M[:, j] = mean
-            V[:, j] = np.square(std)
+        if self.n_cores == 1:
+            # Collect all means and variances in one go
+            M = np.zeros((n_samples, output_dim), dtype=float)
+            V = np.zeros((n_samples, output_dim), dtype=float)
+            for j, emul in enumerate(self.emulator):
+                mean, std = emul.predict(X)  # Assuming std is std. deviation
+                M[:, j] = mean
+                V[:, j] = np.square(std)
+        else:
+            M, V = parallel_inference(self.emulator, X, n_jobs=self.n_cores)    
 
         # Add small epsilon to prevent divide-by-zero
         eps = 1e-10

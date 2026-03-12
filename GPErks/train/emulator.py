@@ -353,14 +353,28 @@ class GPEmulator(Trainable):
 
         X_new = tensorize(self.scaled_data.scx.transform(X_new))
 
-        with torch.no_grad(), gpytorch.settings.fast_pred_var():
-            # TODO: check off-diagonal elements during fast-pred
-            predictions = self.model.likelihood(self.model(X_new))
-            y_mean = predictions.mean.numpy()
-            y_std = numpy.sqrt(predictions.variance.numpy())
-            if with_covar:
+        if with_covar:
+            with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                # TODO: check off-diagonal elements during fast-pred
+                predictions = self.model.likelihood(self.model(X_new))
+                y_mean = predictions.mean.numpy()
+                y_std = numpy.sqrt(predictions.variance.numpy())
                 y_covar = predictions.covariance_matrix.numpy()
                 covar_sign = numpy.sign(y_covar)
+        else:
+            n = len(X_new)
+            y_mean = numpy.empty(n)
+            y_std  = numpy.empty(n)
+            batch_size = 1000
+
+            with torch.no_grad(), gpytorch.settings.fast_pred_var():
+                for i, batch in enumerate(X_new.split(batch_size)):
+                    start = i * batch_size
+                    end   = start + len(batch)  # last batch may be smaller
+
+                    p = self.model.likelihood(self.model(batch))
+                    y_mean[start:end] = p.mean.numpy()
+                    y_std[start:end]  = numpy.sqrt(p.variance.numpy())
 
         y_mean, y_std = self.scaled_data.scy.inverse_transform(y_mean, ystd_=y_std)
         output = (y_mean, y_std)
