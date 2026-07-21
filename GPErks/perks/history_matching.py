@@ -229,7 +229,7 @@ class Wave:
     # Note: the Wave object instance internal structure will be compromised after
     # calling this method: we recommend calling self.copy() and/or self.save()
     # beforehand!
-    def augment_nimp(self, n_total_points, scaling=0.1, n_max=2000):
+    def augment_nimp(self, n_total_points, scaling=0.1, n_max=2000, max_seed_uses=None):
         X0 = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
         ubounds = self.Itrain[:, 1]
@@ -251,13 +251,15 @@ class Wave:
             + f"Missing: {b:<{len(str(n_total_points))}}"
         )
 
-        # Accumulate new points in a list instead of repeated vstack
-        # new_points = []
-        
         # Preallocate a temporary array for perturbations to avoid repeated allocations
         X = np.zeros((n_total_points, X0.shape[1]), dtype=float)
         X[:n_current] = X0
-        
+
+        # Tracks how many times each point in X has been used as a perturbation
+        # seed, so points that never yield valid (non-implausible) neighbours can
+        # be retired instead of being resampled forever.
+        seed_uses = np.zeros(n_total_points, dtype=int)
+
         while n_current < n_total_points:
             count += 1
 
@@ -266,8 +268,24 @@ class Wave:
                 [bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])]
             )
 
-            temp = np.random.normal(loc=X[:n_current], scale=scale)
-            
+            if max_seed_uses is not None:
+                seed_idx = np.where(seed_uses[:n_current] < max_seed_uses)[0]
+                if seed_idx.size == 0:
+                    log.info(
+                        f"\nAll {n_current} current points have reached the "
+                        f"maximum number of seed uses ({max_seed_uses}); "
+                        "stopping early."
+                    )
+                    n_total_points = n_current
+                    break
+            else:
+                seed_idx = np.arange(n_current)
+
+            seeds = X[seed_idx]
+            temp = np.random.normal(loc=seeds, scale=scale)
+            # Tracks, per row of temp, which seed (index into X) produced it.
+            temp_seed_idx = seed_idx.copy()
+
             # Vectorized boundary checking
             count2 = 0
             while True:
@@ -275,12 +293,13 @@ class Wave:
                 # Direct comparison: True where in bounds
                 in_bounds = np.all((temp >= lbounds) & (temp <= ubounds), axis=1)
                 out_of_bounds = ~in_bounds
-                
+
                 if count2 > n_max:
                     temp = temp[in_bounds]
+                    temp_seed_idx = temp_seed_idx[in_bounds]
                     break
                 if np.any(out_of_bounds):
-                    temp[out_of_bounds] = np.random.normal(loc=X[:n_current][out_of_bounds], scale=scale)
+                    temp[out_of_bounds] = np.random.normal(loc=X[temp_seed_idx][out_of_bounds], scale=scale)
                     continue
                 else:
                     break
@@ -288,11 +307,19 @@ class Wave:
             I, _ = self.compute_impl(temp)
             nimp_idx = np.where(I < self.cutoff)[0]
             valid_points = temp[nimp_idx]
-            
+
+            # A seed's use only "counts" against its budget when it produced an
+            # implausible (I >= cutoff) point.
+            failed_mask = I >= self.cutoff
+            seed_uses[temp_seed_idx[failed_mask]] += 1
+
             if len(valid_points) > 0:
-                # new_points.append(valid_points)
                 if n_current + len(valid_points) > n_total_points:
-                    X = np.vstack((X[:n_current], valid_points))
+                    # X = np.vstack((X[:n_current], valid_points))
+                    X [n_current:n_current + len(valid_points)] = valid_points
+                    seed_uses = np.concatenate(
+                        (seed_uses[:n_current], np.zeros(len(valid_points), dtype=int))
+                    )
                 else:
                     X[n_current:n_current + len(valid_points)] = valid_points
                 n_current += len(valid_points)
@@ -308,10 +335,8 @@ class Wave:
             )
 
         log.info("\nDone.")
-        
-        # Combine all points at once
-        # if new_points:
-        #     X = np.vstack([X] + new_points)
+
+        X = X[:n_current]
 
         nimp = len(self.nimp_idx)
         NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
