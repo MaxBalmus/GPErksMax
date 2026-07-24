@@ -230,17 +230,16 @@ class Wave:
     # calling this method: we recommend calling self.copy() and/or self.save()
     # beforehand!
     def augment_nimp(self, n_total_points, scaling=0.1, n_max=2000, max_seed_uses=None):
-        X0 = np.copy(self.NIMP)
         lbounds = self.Itrain[:, 0]
         ubounds = self.Itrain[:, 1]
 
         log.info(
             f"\nRequested points: {n_total_points}\nAvailable points: "
-            + f"{X0.shape[0]}\nStart searching..."
+            + f"{self.NIMP.shape[0]}\nStart searching..."
         )
 
         count = 0
-        n_current = X0.shape[0]
+        n_current = self.NIMP.shape[0]
         a, b = (
             n_current if n_current < n_total_points else n_total_points,
             n_total_points - n_current if n_total_points - n_current > 0 else 0,
@@ -252,8 +251,8 @@ class Wave:
         )
 
         # Preallocate a temporary array for perturbations to avoid repeated allocations
-        X = np.zeros((n_total_points, X0.shape[1]), dtype=float)
-        X[:n_current] = X0
+        X = np.zeros((n_total_points, self.NIMP.shape[1]), dtype=float)
+        X[:n_current] = self.NIMP
 
         # Tracks how many times each point in X has been used as a perturbation
         # seed, so points that never yield valid (non-implausible) neighbours can
@@ -264,9 +263,7 @@ class Wave:
             count += 1
 
             bounds = get_minmax(X[:n_current])
-            scale = scaling * np.array(
-                [bounds[i, 1] - bounds[i, 0] for i in range(X.shape[1])]
-            )
+            scale = scaling * (bounds[:, 1] - bounds[:, 0])
 
             if max_seed_uses is not None:
                 seed_idx = np.where(seed_uses[:n_current] < max_seed_uses)[0]
@@ -299,7 +296,7 @@ class Wave:
                     temp_seed_idx = temp_seed_idx[in_bounds]
                     break
                 if np.any(out_of_bounds):
-                    temp[out_of_bounds] = np.random.normal(loc=X[temp_seed_idx][out_of_bounds], scale=scale)
+                    temp[out_of_bounds] = np.random.normal(loc=X[temp_seed_idx[out_of_bounds]], scale=scale)
                     continue
                 else:
                     break
@@ -315,13 +312,170 @@ class Wave:
 
             if len(valid_points) > 0:
                 if n_current + len(valid_points) > n_total_points:
-                    # X = np.vstack((X[:n_current], valid_points))
-                    X [n_current:n_current + len(valid_points)] = valid_points
-                    seed_uses = np.concatenate(
-                        (seed_uses[:n_current], np.zeros(len(valid_points), dtype=int))
+                    valid_points = valid_points[: n_total_points - n_current]
+                X[n_current:n_current + len(valid_points)] = valid_points
+                n_current += len(valid_points)
+
+            a, b = (
+                n_current if n_current < n_total_points else n_total_points,
+                n_total_points - n_current if n_total_points - n_current > 0 else 0,
+            )
+            log.info(
+                f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
+                + f"({'{:.2f}'.format(100*a/n_total_points):>6}%) | "
+                + f"Missing: {b:<{len(str(n_total_points))}}"
+            )
+
+        log.info("\nDone.")
+
+        X = X[:n_current]
+
+        nimp = len(self.nimp_idx)
+        NIMP_aug = part_and_select(X[nimp:], n_total_points - nimp)
+        I, PV = self.compute_impl(NIMP_aug)
+        self.NIMP = np.vstack((X[:nimp], NIMP_aug))
+        self.I = np.concatenate((self.I, I))
+        self.PV = np.concatenate((self.PV, PV))
+        imp = len(self.imp_idx)
+        self.nimp_idx += list(range(nimp + imp, imp + n_total_points))
+
+    # Note: the Wave object instance internal structure will be compromised after
+    # calling this method: we recommend calling self.copy() and/or self.save()
+    # beforehand!
+    def augment_nimp_efficient(
+        self, n_total_points, scaling=0.1, n_max=2000, max_seed_uses=None, max_batch_size=None
+    ):
+        """
+        Faster variant of augment_nimp.
+
+        The original method draws exactly one perturbation per active seed
+        per outer iteration, so when the non-implausible acceptance rate is
+        low it needs many outer iterations -- each with its own
+        self.compute_impl() call over every emulator -- to fill the request.
+        This version tracks a running estimate of that acceptance rate and
+        sizes each batch to close the remaining gap in as few iterations
+        (and compute_impl calls) as possible, cycling through the active
+        seeds as needed rather than being limited to one draw per seed. It
+        also maintains the perturbation-scale bounds incrementally instead
+        of recomputing get_minmax() over the whole, ever-growing point set
+        on every iteration.
+
+        max_batch_size caps how many candidates can be drawn in a single
+        iteration (defaults to 20 * n_total_points) to bound memory use when
+        the acceptance rate is very low.
+        """
+        lbounds = self.Itrain[:, 0]
+        ubounds = self.Itrain[:, 1]
+
+        if max_batch_size is None:
+            max_batch_size = 20 * n_total_points
+
+        log.info(
+            f"\nRequested points: {n_total_points}\nAvailable points: "
+            + f"{self.NIMP.shape[0]}\nStart searching..."
+        )
+
+        count = 0
+        n_current = self.NIMP.shape[0]
+        a, b = (
+            n_current if n_current < n_total_points else n_total_points,
+            n_total_points - n_current if n_total_points - n_current > 0 else 0,
+        )
+        log.info(
+            f"[Iteration: {count:<2}] Found: {a:<{len(str(n_total_points))}} "
+            + f"({'{:.2f}'.format(100*a/n_total_points):>6}%) | "
+            + f"Missing: {b:<{len(str(n_total_points))}}"
+        )
+
+        X = np.zeros((n_total_points, self.NIMP.shape[1]), dtype=float)
+        X[:n_current] = self.NIMP
+
+        seed_uses = np.zeros(n_total_points, dtype=int)
+
+        running_min = X[:n_current].min(axis=0)
+        running_max = X[:n_current].max(axis=0)
+
+        # Running estimate of the fraction of perturbation candidates that
+        # turn out non-implausible. Starts optimistic (1.0) so the first
+        # batch behaves like the original one-per-seed draw; converges to
+        # whatever this region's true acceptance rate is.
+        acceptance_rate = 1.0
+
+        while n_current < n_total_points:
+            count += 1
+
+            scale = scaling * (running_max - running_min)
+
+            if max_seed_uses is not None:
+                seed_idx = np.where(seed_uses[:n_current] < max_seed_uses)[0]
+                if seed_idx.size == 0:
+                    log.info(
+                        f"\nAll {n_current} current points have reached the "
+                        f"maximum number of seed uses ({max_seed_uses}); "
+                        "stopping early."
                     )
+                    n_total_points = n_current
+                    break
+            else:
+                seed_idx = np.arange(n_current)
+
+            n_missing = n_total_points - n_current
+            n_batch = int(
+                np.clip(np.ceil(n_missing / acceptance_rate), n_missing, max_batch_size)
+            )
+
+            # Cycle through the active seeds (repeating as needed) instead of
+            # being limited to one perturbation attempt per seed, so a single
+            # batch can close the whole remaining gap even when few seeds are
+            # left active.
+            temp_seed_idx = seed_idx[np.arange(n_batch) % seed_idx.size]
+            seeds = X[temp_seed_idx]
+            temp = np.random.normal(loc=seeds, scale=scale)
+
+            # Vectorized boundary checking
+            count2 = 0
+            while True:
+                count2 += 1
+                in_bounds = np.all((temp >= lbounds) & (temp <= ubounds), axis=1)
+                out_of_bounds = ~in_bounds
+
+                if count2 > n_max:
+                    temp = temp[in_bounds]
+                    temp_seed_idx = temp_seed_idx[in_bounds]
+                    break
+                if np.any(out_of_bounds):
+                    temp[out_of_bounds] = np.random.normal(loc=X[temp_seed_idx[out_of_bounds]], scale=scale)
+                    continue
                 else:
-                    X[n_current:n_current + len(valid_points)] = valid_points
+                    break
+
+            I, _ = self.compute_impl(temp)
+            nimp_idx = np.where(I < self.cutoff)[0]
+            valid_points = temp[nimp_idx]
+
+            # A seed's use only "counts" against its budget when it produced
+            # an implausible (I >= cutoff) point. temp_seed_idx may contain
+            # repeated seed indices (a seed can appear in several rows of
+            # this batch), so np.add.at is required here -- plain fancy-index
+            # += silently drops all but one increment per repeated index.
+            failed_mask = I >= self.cutoff
+            np.add.at(seed_uses, temp_seed_idx[failed_mask], 1)
+
+            # Update the acceptance-rate estimate (exponential moving
+            # average) so the next batch size reflects how hard this region
+            # is to sample.
+            if len(temp) > 0:
+                observed_rate = len(valid_points) / len(temp)
+                acceptance_rate = 0.5 * acceptance_rate + 0.5 * max(
+                    observed_rate, 1.0 / max_batch_size
+                )
+
+            if len(valid_points) > 0:
+                if n_current + len(valid_points) > n_total_points:
+                    valid_points = valid_points[: n_total_points - n_current]
+                X[n_current:n_current + len(valid_points)] = valid_points
+                running_min = np.minimum(running_min, valid_points.min(axis=0))
+                running_max = np.maximum(running_max, valid_points.max(axis=0))
                 n_current += len(valid_points)
 
             a, b = (

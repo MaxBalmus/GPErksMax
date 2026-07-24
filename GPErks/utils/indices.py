@@ -1,3 +1,5 @@
+import heapq
+import itertools
 from time import time
 
 import numpy as np
@@ -88,7 +90,7 @@ def part_and_select_1(P, N):
     return np.stack(selected) * (max_ - min_) + min_
 
 
-def part_and_select(P, N):
+def part_and_select0(P, N):
     C1 = P.copy()
     min_ = C1.min(axis=0)
     max_ = C1.max(axis=0)
@@ -143,6 +145,60 @@ def part_and_select(P, N):
         c = np.mean(C, axis=0)
         idx = np.argmin(np.linalg.norm(C - c, axis=1))
         selected.append(C[idx])
+    time2 = time()
+    print(f"Step 2 end {time2 - time1:.2f} s.")
+    return np.stack(selected) * (max_ - min_) + min_
+
+
+def part_and_select(P, N):
+    # Same recursive binary-space-partitioning selection as `part_and_select`,
+    # but driven by a max-heap over cluster "spread" instead of re-scanning
+    # the whole archive each iteration, and using plain index arrays instead
+    # of a preallocated (n1 x 2N+1) index matrix. This turns the O(N^2) search
+    # step into O(N log N) and drops peak memory from O(n1 * N) to O(n1).
+    C1 = P.copy()
+    min_ = C1.min(axis=0)
+    max_ = C1.max(axis=0)
+    C1 = (C1 - min_) / (max_ - min_)
+
+    idx0 = np.arange(C1.shape[0], dtype=np.intp)
+    p1, s1 = delta(C1)
+
+    counter = itertools.count()
+    # heap entries: (-spread, tie_breaker, dim, indices); tie_breaker keeps
+    # entries with equal spread orderable without falling back to comparing
+    # the index arrays themselves.
+    heap = [(-s1, next(counter), p1, idx0)]
+    n_clusters = 1
+
+    print("Part and select (efficient)")
+    print("Step 1 start")
+    time0 = time()
+    while n_clusters < N:
+        neg_s, _, p, idx = heapq.heappop(heap)
+        s = -neg_s
+        if s < 1e-16:
+            heapq.heappush(heap, (neg_s, next(counter), p, idx))
+            break
+        vals = C1[idx, p]
+        cp = (vals.max() + vals.min()) / 2
+        mask = vals <= cp
+        idx1, idx2 = idx[mask], idx[~mask]
+        p1_, s1_ = delta(C1[idx1])
+        p2_, s2_ = delta(C1[idx2])
+        heapq.heappush(heap, (-s1_, next(counter), p1_, idx1))
+        heapq.heappush(heap, (-s2_, next(counter), p2_, idx2))
+        n_clusters += 1
+    time1 = time()
+    print(f"Step 1 end {time1 - time0:.2f} s.")
+
+    print("Step 2 start")
+    selected = []
+    for _, _, _, idx in heap:
+        C = C1[idx]
+        c = np.mean(C, axis=0)
+        idx_min = np.argmin(np.linalg.norm(C - c, axis=1))
+        selected.append(C[idx_min])
     time2 = time()
     print(f"Step 2 end {time2 - time1:.2f} s.")
     return np.stack(selected) * (max_ - min_) + min_
